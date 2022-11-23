@@ -1,12 +1,15 @@
-import { extend, useFrame } from "@react-three/fiber";
+import { useFrame } from "@react-three/fiber";
 import { a, SpringValue } from "@react-spring/three";
 import { MutableRefObject, useMemo, useRef } from "react";
-import { BufferGeometry, Float32BufferAttribute, Group, Line } from "three";
-import { MeshLine, MeshLineMaterial } from "meshline";
+import {
+  AdditiveBlending,
+  BufferGeometry,
+  Float32BufferAttribute,
+  Group,
+  Line,
+} from "three";
 import { hexToRgb, pickRandom, pickRandomDecimalFromInterval } from "./utils";
 import { LIGHT_BG_COLORS } from "./constants";
-
-extend({ MeshLine, MeshLineMaterial });
 
 const dashScale = pickRandom([
   pickRandomDecimalFromInterval(0.1, 0.5),
@@ -37,7 +40,7 @@ const DashedCircle = ({
       const v = (i / divisions) * (Math.PI * 2);
       const x = Math.sin(v);
       const y = Math.cos(v);
-      vertices.push(x, y, 0.5);
+      vertices.push(x, y, 0);
     }
 
     const geometry = new BufferGeometry();
@@ -66,8 +69,8 @@ const DashedCircle = ({
         onUpdate={(line: Line) => line.computeLineDistances()}
         geometry={geometry}
         scale={scale.to({
-          range: [0.15, 0.2, 0.25, 0.3],
-          output: [2.6, 3.3, 4.1, 4.6],
+          range: [0.1, 0.25],
+          output: [2, 5],
         })}
       >
         <lineDashedMaterial
@@ -75,6 +78,8 @@ const DashedCircle = ({
           scale={dashScale}
           dashSize={dashSize}
           gapSize={0.2}
+          // blending={AdditiveBlending}
+          // transparent
         />
       </a.line>
     </a.group>

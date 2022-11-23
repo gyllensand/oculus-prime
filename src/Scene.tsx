@@ -1,28 +1,17 @@
 import { OrbitControls, useHelper, useTexture } from "@react-three/drei";
-import { extend, useFrame, useThree } from "@react-three/fiber";
+import { useThree } from "@react-three/fiber";
 import { a, useSpring, useSprings } from "@react-spring/three";
 import { RefObject, useCallback, useEffect, useMemo, useRef } from "react";
 import {
   AdditiveBlending,
-  BackSide,
-  CustomBlending,
   DoubleSide,
-  DstAlphaFactor,
-  DstColorFactor,
-  Mesh,
-  OneMinusDstAlphaFactor,
-  OneMinusSrcAlphaFactor,
-  OneMinusSrcColorFactor,
   PointLightHelper,
-  RepeatWrapping,
   SpotLight,
   SpotLightHelper,
-  Texture,
   Vector3,
 } from "three";
 import {
   getSizeByAspect,
-  getSizeByWidthAspect,
   pickRandom,
   pickRandomDecimalFromInterval,
   pickRandomIntFromInterval,
@@ -33,10 +22,10 @@ import { COLORS, BG_COLORS } from "./constants";
 import DashedCircle from "./DashedCircle";
 import { Bloom, EffectComposer, Noise } from "@react-three/postprocessing";
 import { KernelSize } from "postprocessing";
-import Dots from "./Dots";
+import Frame from "./Frame";
 
 const bgColor = pickRandom(BG_COLORS);
-const spotlightAngle = pickRandomDecimalFromInterval(0.15, 0.3);
+const spotlightAngle = pickRandomDecimalFromInterval(0.1, 0.2);
 const spotlightCorner1Y = pickRandomDecimalFromInterval(-4, 4);
 const spotlightCorner2Y = pickRandomDecimalFromInterval(-4, 4);
 const bgShapeCount = pickRandomIntFromInterval(3, 5);
@@ -85,12 +74,14 @@ const Scene = ({ canvasRef }: { canvasRef: RefObject<HTMLCanvasElement> }) => {
           ),
         };
       }),
-    []
+    [textures]
   );
 
-  const ladder = useMemo(() => {
-    const lineCount = pickRandomIntFromInterval(75, 150);
-    const width = pickRandomDecimalFromInterval(12, 14);
+  const frames = useMemo(() => {
+    const lineCount = pickRandomIntFromInterval(0, 200);
+    const width = pickRandomDecimalFromInterval(0.1, 2, 3);
+    const spherePos = pickRandomSphericalPos();
+
     const wireframeOptions = pickRandom([0, 1, 2]);
     const wireframe =
       wireframeOptions === 0
@@ -104,15 +95,17 @@ const Scene = ({ canvasRef }: { canvasRef: RefObject<HTMLCanvasElement> }) => {
     const secColor = pickRandom(COLORS);
     const colorSeparator = pickRandomIntFromInterval(0, lineCount);
 
+    console.log(lineCount);
+
     return {
-      size: pickRandomDecimalFromInterval(0.5, 1),
+      size: pickRandomDecimalFromInterval(0.5, 1, 3),
+      spherePos,
       rotation: pickRandomDecimalFromInterval(0, Math.PI * 2),
-      innerRotation: pickRandomDecimalFromInterval(15, 80),
-      separatorDistance: pickRandomDecimalFromInterval(2, 10),
+      gap: pickRandomDecimalFromInterval(0.01, 0.03, 3),
       width,
-      height: pickRandomDecimalFromInterval(0.1, 0.3),
+      height: pickRandomDecimalFromInterval(0.03, 0.1, 3),
       lines: new Array(lineCount).fill(null).map((o, i) => ({
-        width: pickRandomDecimalFromInterval(width, width + 1),
+        width: pickRandomDecimalFromInterval(width, width + 0.5),
         wireframe,
         color:
           colorOptions === 0
@@ -128,10 +121,11 @@ const Scene = ({ canvasRef }: { canvasRef: RefObject<HTMLCanvasElement> }) => {
     };
   }, []);
 
-  const [lineSprings, setLineSprings] = useSprings(
-    ladder.lines.length,
+  console.log(frames.gap, frames.rotation);
+
+  const [frameSprings, setFrameSprings] = useSprings(
+    frames.lines.length,
     (i) => ({
-      rotation: [0, 0, i / ladder.innerRotation],
       scale: 1,
     })
   );
@@ -158,13 +152,13 @@ const Scene = ({ canvasRef }: { canvasRef: RefObject<HTMLCanvasElement> }) => {
     const newRotation = pickRandomDecimalFromInterval(15, 100);
     const newScale = pickRandomDecimalFromInterval(0.5, 1.5);
 
-    setLineSprings.start((i) => ({
+    setFrameSprings.start((i) => ({
       rotation: [0, 0, i / newRotation],
       scale: pickRandomDecimalFromInterval(newScale - 0.1, newScale + 0.1),
       config: { mass: 1, tension: 100, friction: 25 },
     }));
 
-    const newAngle = pickRandomDecimalFromInterval(0.15, 0.3);
+    const newAngle = pickRandomDecimalFromInterval(0.1, 0.25);
 
     setSpotlightSpring.start(() => ({
       angle: newAngle,
@@ -200,10 +194,10 @@ const Scene = ({ canvasRef }: { canvasRef: RefObject<HTMLCanvasElement> }) => {
       config: { mass: 1, tension: 100, friction: 25 },
     }));
   }, [
-    setLineSprings,
     setBgShapeSprings,
     setSpotlightSpring,
     setDashedCircleSpring,
+    setFrameSprings,
     angle,
   ]);
 
@@ -239,24 +233,12 @@ const Scene = ({ canvasRef }: { canvasRef: RefObject<HTMLCanvasElement> }) => {
   useHelper(pointlightRef, PointLightHelper, 1, "red");
   const pointlightRef2 = useRef();
   useHelper(pointlightRef2, PointLightHelper, 1, "red");
+
   return (
     <>
       <color attach="background" args={[bgColor]} />
       <OrbitControls enabled={true} />
-      {/* <ambientLight /> */}
 
-      {/* <pointLight
-        ref={pointlightRef}
-        intensity={1}
-        // castShadow
-        position={[-4, 0, 5]}
-      />
-      <pointLight
-        ref={pointlightRef2}
-        intensity={1}
-        // castShadow
-        position={[4, 0, 5]}
-      /> */}
       <group
         scale={[
           getSizeByAspect(1, aspect),
@@ -274,49 +256,18 @@ const Scene = ({ canvasRef }: { canvasRef: RefObject<HTMLCanvasElement> }) => {
           intensity={intensity}
         />
 
-        {/* <a.spotLight
-          ref={spotlightCorner1Ref}
-          position={[-3, spotlightCorner1Y, 20]}
-          penumbra={0.5}
-          angle={0.05}
-          intensity={1}
-        />
-
-        <a.spotLight
-          ref={spotlightCorner2Ref}
-          position={[3, spotlightCorner2Y, 20]}
-          penumbra={0.5}
-          angle={0.05}
-          intensity={1}
-        /> */}
-
-        <group
-          rotation={[0, 0, ladder.rotation]}
-          scale={[ladder.size, ladder.size, ladder.size]}
-        >
-          <group
-            position={[
-              0,
-              -(ladder.lines.length / 2) / ladder.separatorDistance,
-              -10,
-            ]}
-          >
-            {ladder.lines.map((o, i) => (
-              <a.mesh
-                key={i}
-                position={[0, i / 5, 0]}
-                rotation={lineSprings[i].rotation as any}
-                scale={lineSprings[i].scale as any}
-              >
-                <planeBufferGeometry args={[o.width, ladder.height]} />
-                <meshBasicMaterial
-                  color={o.color}
-                  wireframe={o.wireframe}
-                  blending={AdditiveBlending}
-                />
-              </a.mesh>
-            ))}
-          </group>
+        <group rotation={[0, 0, frames.rotation]}>
+          {frames.lines.map((o, i) => (
+            <Frame
+              key={i}
+              pos={frames.spherePos}
+              index={i}
+              radius={angle}
+              data={o}
+              framesData={frames}
+              scale={frameSprings[i].scale}
+            />
+          ))}
         </group>
 
         <group>
@@ -337,7 +288,7 @@ const Scene = ({ canvasRef }: { canvasRef: RefObject<HTMLCanvasElement> }) => {
                 />
               ) : o.shape === 2 ? (
                 <cylinderBufferGeometry
-                  args={[o.width / 2.5, o.width / 2.5, 0.1, 128, 128]}
+                  args={[o.width / 2.5, o.width / 2.5, 0.1, 3, 3]}
                 />
               ) : (
                 <cylinderBufferGeometry
@@ -353,39 +304,19 @@ const Scene = ({ canvasRef }: { canvasRef: RefObject<HTMLCanvasElement> }) => {
                 opacity={o.opacity}
                 toneMapped={false}
                 blending={AdditiveBlending}
-                // aoMap={o.texture}
-                // metalness={0.5}
-                // roughness={0.5}
                 shininess={2}
               />
             </a.mesh>
           ))}
         </group>
 
-        {/* <mesh position={[0, 5, 5]} rotation={[Math.PI / 2, 0, 0]}>
-          <planeBufferGeometry args={[10, 10]} />
-          <meshStandardMaterial color={bgColor} blending={AdditiveBlending} />
-        </mesh>
-        <mesh position={[-5, 0, 5]} rotation={[0, Math.PI / 2, 0]}>
-          <planeBufferGeometry args={[10, 10]} />
-          <meshStandardMaterial color={bgColor} blending={AdditiveBlending} />
-        </mesh>
-        <mesh position={[5, 0, 5]} rotation={[0, -Math.PI / 2, 0]}>
-          <planeBufferGeometry args={[10, 10]} />
-          <meshStandardMaterial color={bgColor} blending={AdditiveBlending} />
-        </mesh>
-        <mesh position={[0, -5, 5]} rotation={[-Math.PI / 2, 0, 0]}>
-          <planeBufferGeometry args={[10, 10]} />
-          <meshStandardMaterial color={bgColor} blending={AdditiveBlending} />
-        </mesh> */}
-
         <DashedCircle
           scale={angle}
           rotation={dashedCircleSprings.rotation}
           lastRotation={lastDashedCircleRotation}
         />
-        {/* <Dots count={5000} /> */}
       </group>
+
       <EffectComposer>
         <Bloom
           kernelSize={3}
