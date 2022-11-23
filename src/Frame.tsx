@@ -31,36 +31,27 @@ const Frame = ({
   index,
   radius,
   data,
-  framesData,
+  height,
+  gap,
   scale,
 }: {
   pos: Vector3;
   index: number;
   radius: SpringValue<number>;
   scale: SpringValue<number>;
+  height: number;
+  gap: number;
   data: {
     width: number;
     wireframe: boolean;
     color: string;
-  };
-  framesData: {
-    size: number;
-    rotation: number;
-    width: number;
-    height: number;
-    gap: number;
-    lines: {
-      width: number;
-      wireframe: boolean;
-      color: string;
-    }[];
   };
 }) => {
   const groupRef = useRef<Group>();
   // const width = Math.random();
 
   useFrame(() => {
-    const angle = index * Math.PI * framesData.gap;
+    const angle = index * Math.PI * gap;
 
     groupRef
       .current!.position.set(Math.cos(angle), Math.sin(angle), 0)
@@ -71,7 +62,7 @@ const Frame = ({
 
   return (
     <a.mesh ref={groupRef} scale={scale as any}>
-      <boxBufferGeometry args={[0.1, framesData.height, data.width, 1, 1]} />
+      <boxBufferGeometry args={[0.1, height, data.width, 1, 1]} />
       <meshBasicMaterial
         color={data.color}
         wireframe={data.wireframe}

@@ -1,4 +1,4 @@
-import { OrbitControls, useHelper, useTexture } from "@react-three/drei";
+import { OrbitControls, useHelper } from "@react-three/drei";
 import { useThree } from "@react-three/fiber";
 import { a, useSpring, useSprings } from "@react-spring/three";
 import { RefObject, useCallback, useEffect, useMemo, useRef } from "react";
@@ -30,6 +30,49 @@ const spotlightCorner1Y = pickRandomDecimalFromInterval(-4, 4);
 const spotlightCorner2Y = pickRandomDecimalFromInterval(-4, 4);
 const bgShapeCount = pickRandomIntFromInterval(3, 5);
 
+/******** */
+
+const frameLineCount = pickRandomIntFromInterval(20, 200);
+const frameWidth = pickRandomDecimalFromInterval(0.1, 2, 3);
+const frameSpherePos = pickRandomSphericalPos();
+const frameWireframeOptions = pickRandom([0, 1, 2]);
+const frameWireframe =
+  frameWireframeOptions === 0
+    ? false
+    : frameWireframeOptions === 1
+    ? true
+    : pickRandom([true, false]);
+
+const frameColorOptions = pickRandom([0, 1, 2]);
+const framePriColor = pickRandom(COLORS);
+const frameSecColor = pickRandom(COLORS);
+const frameColorSeparator = pickRandomIntFromInterval(0, frameLineCount);
+const frameRotation = pickRandomDecimalFromInterval(0, Math.PI * 2);
+const frameGap =
+  frameLineCount > 100
+    ? pickRandom([
+        pickRandomDecimalFromInterval(0.005, 0.01, 3),
+        pickRandomDecimalFromInterval(0.01, 0.03, 3),
+      ])
+    : pickRandomDecimalFromInterval(0.01, 0.03, 3);
+const frameHeight = pickRandomDecimalFromInterval(0.03, 0.1, 3);
+const frameLines = new Array(frameLineCount).fill(null).map((o, i) => ({
+  width: pickRandomDecimalFromInterval(frameWidth, frameWidth + 0.5),
+  wireframe: frameWireframe,
+  color:
+    frameColorOptions === 0
+      ? framePriColor
+      : frameColorOptions === 1
+      ? i < frameColorSeparator
+        ? framePriColor
+        : frameSecColor
+      : i % 2 === 0
+      ? framePriColor
+      : frameSecColor,
+}));
+
+/******** */
+
 const Scene = ({ canvasRef }: { canvasRef: RefObject<HTMLCanvasElement> }) => {
   const { aspect } = useThree((state) => ({
     aspect: state.viewport.aspect,
@@ -40,23 +83,6 @@ const Scene = ({ canvasRef }: { canvasRef: RefObject<HTMLCanvasElement> }) => {
   const lastDashedCircleRotation = useRef(0);
   const toneInitialized = useRef(false);
 
-  const textures = useTexture([
-    "/textures/1.png",
-    "/textures/4.png",
-    "/textures/5.png",
-    "/textures/6.png",
-    "/textures/7.png",
-    "/textures/8.png",
-    "/textures/9.png",
-    "/textures/10.png",
-    "/textures/11.png",
-    "/textures/12.png",
-    "/textures/13.png",
-    "/textures/14.png",
-    "/textures/15.png",
-    "/textures/16.png",
-  ]);
-
   const bgShapes = useMemo(
     () =>
       new Array(bgShapeCount).fill(null).map((o, i) => {
@@ -66,7 +92,6 @@ const Scene = ({ canvasRef }: { canvasRef: RefObject<HTMLCanvasElement> }) => {
           height: pickRandomDecimalFromInterval(4, 8),
           color: pickRandom(COLORS),
           shape: pickRandom([0, 1, 2, 3]),
-          texture: pickRandom(textures),
           position: new Vector3(
             pickRandomDecimalFromInterval(-3, 3),
             pickRandomDecimalFromInterval(-3, 3),
@@ -74,61 +99,12 @@ const Scene = ({ canvasRef }: { canvasRef: RefObject<HTMLCanvasElement> }) => {
           ),
         };
       }),
-    [textures]
+    []
   );
 
-  const frames = useMemo(() => {
-    const lineCount = pickRandomIntFromInterval(0, 200);
-    const width = pickRandomDecimalFromInterval(0.1, 2, 3);
-    const spherePos = pickRandomSphericalPos();
-
-    const wireframeOptions = pickRandom([0, 1, 2]);
-    const wireframe =
-      wireframeOptions === 0
-        ? false
-        : wireframeOptions === 1
-        ? true
-        : pickRandom([true, false]);
-
-    const colorOptions = pickRandom([0, 1, 2]);
-    const priColor = pickRandom(COLORS);
-    const secColor = pickRandom(COLORS);
-    const colorSeparator = pickRandomIntFromInterval(0, lineCount);
-
-    console.log(lineCount);
-
-    return {
-      size: pickRandomDecimalFromInterval(0.5, 1, 3),
-      spherePos,
-      rotation: pickRandomDecimalFromInterval(0, Math.PI * 2),
-      gap: pickRandomDecimalFromInterval(0.01, 0.03, 3),
-      width,
-      height: pickRandomDecimalFromInterval(0.03, 0.1, 3),
-      lines: new Array(lineCount).fill(null).map((o, i) => ({
-        width: pickRandomDecimalFromInterval(width, width + 0.5),
-        wireframe,
-        color:
-          colorOptions === 0
-            ? priColor
-            : colorOptions === 1
-            ? i < colorSeparator
-              ? priColor
-              : secColor
-            : i % 2 === 0
-            ? priColor
-            : secColor,
-      })),
-    };
-  }, []);
-
-  console.log(frames.gap, frames.rotation);
-
-  const [frameSprings, setFrameSprings] = useSprings(
-    frames.lines.length,
-    (i) => ({
-      scale: 1,
-    })
-  );
+  const [frameSprings, setFrameSprings] = useSprings(frameLineCount, (i) => ({
+    scale: 1,
+  }));
 
   const [bgShapeSprings, setBgShapeSprings] = useSprings(bgShapeCount, (i) => ({
     position: [
@@ -226,14 +202,6 @@ const Scene = ({ canvasRef }: { canvasRef: RefObject<HTMLCanvasElement> }) => {
     spotlightCorner2Ref.current?.target.updateMatrixWorld();
   }, []);
 
-  const spotlightRef = useRef<SpotLight>();
-  useHelper(spotlightRef, SpotLightHelper, "red");
-
-  const pointlightRef = useRef();
-  useHelper(pointlightRef, PointLightHelper, 1, "red");
-  const pointlightRef2 = useRef();
-  useHelper(pointlightRef2, PointLightHelper, 1, "red");
-
   return (
     <>
       <color attach="background" args={[bgColor]} />
@@ -249,22 +217,22 @@ const Scene = ({ canvasRef }: { canvasRef: RefObject<HTMLCanvasElement> }) => {
         {/*
       // @ts-ignore */}
         <a.spotLight
-          // ref={spotlightRef}
           position={[0, 0, 20]}
           penumbra={0.5}
           angle={angle}
           intensity={intensity}
         />
 
-        <group rotation={[0, 0, frames.rotation]}>
-          {frames.lines.map((o, i) => (
+        <group rotation={[0, 0, frameRotation]}>
+          {frameLines.map((o, i) => (
             <Frame
               key={i}
-              pos={frames.spherePos}
+              pos={frameSpherePos}
               index={i}
               radius={angle}
               data={o}
-              framesData={frames}
+              gap={frameGap}
+              height={frameHeight}
               scale={frameSprings[i].scale}
             />
           ))}
