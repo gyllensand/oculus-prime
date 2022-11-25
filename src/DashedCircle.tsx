@@ -8,26 +8,35 @@ import {
   Group,
   Line,
 } from "three";
-import { hexToRgb, pickRandom, pickRandomDecimalFromInterval } from "./utils";
-import { LIGHT_BG_COLORS } from "./constants";
-
-const dashScale = pickRandom([
-  pickRandomDecimalFromInterval(0.1, 0.5),
-  pickRandomDecimalFromInterval(1, 4),
-]);
-const dashSize =
-  dashScale <= 0.3 ? pickRandomDecimalFromInterval(0.2, 0.5) : 0.1;
-const color = pickRandom(LIGHT_BG_COLORS);
-const rgb = hexToRgb(color);
 
 const DashedCircle = ({
   scale,
   rotation,
   lastRotation,
+  currentRotation,
+  reversedRotation = false,
+  outputScale,
+  innerCircle,
+  dashScale,
+  dashSize,
+  rgb,
+  dashSpeed,
 }: {
   scale: SpringValue<number>;
   rotation: SpringValue<number[]>;
-  lastRotation: MutableRefObject<number>;
+  lastRotation: MutableRefObject<number | undefined>;
+  currentRotation: MutableRefObject<number | undefined>;
+  reversedRotation?: boolean;
+  outputScale: number;
+  innerCircle?: boolean;
+  dashScale: number;
+  dashSize: number;
+  rgb: {
+    r: number;
+    g: number;
+    b: number;
+  };
+  dashSpeed: number;
 }) => {
   const lineRef = useRef<Line>();
   const groupRef = useRef<Group>();
@@ -45,32 +54,77 @@ const DashedCircle = ({
 
     const geometry = new BufferGeometry();
     geometry.setAttribute("position", new Float32BufferAttribute(vertices, 3));
+
     return geometry;
   }, []);
 
   useFrame(() => {
-    if (!groupRef.current || lastRotation.current === undefined) {
+    if (!groupRef.current) {
       return;
     }
 
-    if (rotation.get()[2] > lastRotation.current) {
-      lineRef.current!.rotation.z += 0.003;
+    if (innerCircle) {
+      if (reversedRotation) {
+        if (
+          lastRotation?.current !== undefined &&
+          currentRotation?.current !== undefined &&
+          currentRotation.current < lastRotation.current
+        ) {
+          lineRef.current!.rotation.z += dashSpeed;
+        } else {
+          lineRef.current!.rotation.z -= dashSpeed;
+        }
+      } else {
+        if (
+          lastRotation?.current !== undefined &&
+          currentRotation?.current !== undefined &&
+          currentRotation.current > lastRotation.current
+        ) {
+          lineRef.current!.rotation.z -= dashSpeed;
+        } else {
+          lineRef.current!.rotation.z += dashSpeed;
+        }
+      }
     } else {
-      lineRef.current!.rotation.z -= 0.003;
+      if (reversedRotation) {
+        if (
+          lastRotation?.current !== undefined &&
+          currentRotation?.current !== undefined &&
+          currentRotation.current < lastRotation.current
+        ) {
+          lineRef.current!.rotation.z -= dashSpeed;
+        } else {
+          lineRef.current!.rotation.z += dashSpeed;
+        }
+      } else {
+        if (
+          lastRotation?.current !== undefined &&
+          currentRotation?.current !== undefined &&
+          currentRotation.current > lastRotation.current
+        ) {
+          lineRef.current!.rotation.z += dashSpeed;
+        } else {
+          lineRef.current!.rotation.z -= dashSpeed;
+        }
+      }
     }
   });
 
   return (
-    // @ts-ignore
-    <a.group ref={groupRef} rotation={rotation}>
+    <a.group
+      ref={groupRef}
+      // @ts-ignore
+      rotation={rotation}
+      scale={[outputScale, outputScale, outputScale]}
+    >
       <a.line
         // @ts-ignore
         ref={lineRef}
         onUpdate={(line: Line) => line.computeLineDistances()}
         geometry={geometry}
         scale={scale.to({
-          range: [0.1, 0.25],
-          output: [2, 5],
+          range: [0.08, 0.25],
+          output: [1.55, 5],
         })}
       >
         <lineDashedMaterial
@@ -78,8 +132,9 @@ const DashedCircle = ({
           scale={dashScale}
           dashSize={dashSize}
           gapSize={0.2}
-          // blending={AdditiveBlending}
-          // transparent
+          blending={AdditiveBlending}
+          transparent
+          opacity={innerCircle ? 0.2 : 1}
         />
       </a.line>
     </a.group>

@@ -12,23 +12,28 @@ import {
 } from "three";
 import {
   getSizeByAspect,
+  hexToRgb,
   pickRandom,
+  pickRandomBoolean,
   pickRandomDecimalFromInterval,
   pickRandomIntFromInterval,
   pickRandomSphericalPos,
   range,
 } from "./utils";
-import { COLORS, BG_COLORS } from "./constants";
+import { COLORS, BG_COLORS, LIGHT_BG_COLORS } from "./constants";
 import DashedCircle from "./DashedCircle";
 import { Bloom, EffectComposer, Noise } from "@react-three/postprocessing";
 import { KernelSize } from "postprocessing";
 import Frame from "./Frame";
 
 const bgColor = pickRandom(BG_COLORS);
-const spotlightAngle = pickRandomDecimalFromInterval(0.1, 0.2);
+const spotlightAngle = pickRandomDecimalFromInterval(0.08, 0.2, 2);
 const spotlightCorner1Y = pickRandomDecimalFromInterval(-4, 4);
 const spotlightCorner2Y = pickRandomDecimalFromInterval(-4, 4);
 const bgShapeCount = pickRandomIntFromInterval(3, 5);
+
+const reversedRotation = pickRandomBoolean();
+const noiseOpacity = pickRandomDecimalFromInterval(0.05, 0.1);
 
 /******** */
 
@@ -73,6 +78,31 @@ const frameLines = new Array(frameLineCount).fill(null).map((o, i) => ({
 
 /******** */
 
+const dashedCircleCount = pickRandom([
+  ...new Array(9).fill(null).map(() => 1),
+  2,
+]);
+
+const dashedCircles = new Array(dashedCircleCount).fill(null).map(() => {
+  const dashScale = pickRandom([
+    pickRandomDecimalFromInterval(0.1, 0.5),
+    pickRandomDecimalFromInterval(1, 4),
+  ]);
+  const dashSize =
+    dashScale <= 0.3 ? pickRandomDecimalFromInterval(0.2, 0.5) : 0.1;
+  const color = pickRandom(LIGHT_BG_COLORS);
+  const rgb = hexToRgb(color);
+
+  const dashSpeed = pickRandomDecimalFromInterval(0.002, 0.004, 4);
+
+  return {
+    dashScale,
+    dashSize,
+    rgb,
+    dashSpeed,
+  };
+});
+
 const Scene = ({ canvasRef }: { canvasRef: RefObject<HTMLCanvasElement> }) => {
   const { aspect } = useThree((state) => ({
     aspect: state.viewport.aspect,
@@ -80,7 +110,8 @@ const Scene = ({ canvasRef }: { canvasRef: RefObject<HTMLCanvasElement> }) => {
 
   const spotlightCorner1Ref = useRef<SpotLight>();
   const spotlightCorner2Ref = useRef<SpotLight>();
-  const lastDashedCircleRotation = useRef(0);
+  const lastSpotlightAngle = useRef<number>();
+  const currentSpotlightAngle = useRef(spotlightAngle);
   const toneInitialized = useRef(false);
 
   const bgShapes = useMemo(
@@ -125,45 +156,44 @@ const Scene = ({ canvasRef }: { canvasRef: RefObject<HTMLCanvasElement> }) => {
   }));
 
   const onPointerDown = useCallback(() => {
-    const newRotation = pickRandomDecimalFromInterval(15, 100);
-    const newScale = pickRandomDecimalFromInterval(0.5, 1.5);
+    const newRotation = pickRandomDecimalFromInterval(15, 100, 1, Math.random);
+    const newScale = pickRandomDecimalFromInterval(0.5, 1.5, 1, Math.random);
 
     setFrameSprings.start((i) => ({
       rotation: [0, 0, i / newRotation],
-      scale: pickRandomDecimalFromInterval(newScale - 0.1, newScale + 0.1),
+      scale: pickRandomDecimalFromInterval(
+        newScale - 0.1,
+        newScale + 0.1,
+        2,
+        Math.random
+      ),
       config: { mass: 1, tension: 100, friction: 25 },
     }));
 
-    const newAngle = pickRandomDecimalFromInterval(0.1, 0.25);
+    const newAngle = pickRandomDecimalFromInterval(0.08, 0.25, 2, Math.random);
+    lastSpotlightAngle.current = angle.get();
+    currentSpotlightAngle.current = newAngle;
 
     setSpotlightSpring.start(() => ({
       angle: newAngle,
-      intensity: pickRandomDecimalFromInterval(0.5, 1),
+      intensity: pickRandomDecimalFromInterval(0.5, 1, 1, Math.random),
       config: { mass: 1, tension: 100, friction: 25 },
     }));
 
-    lastDashedCircleRotation.current = range(
-      0.15,
-      0.3,
-      -Math.PI / 2,
-      Math.PI / 2,
-      angle.get()
-    );
-
     setDashedCircleSpring.start(() => ({
-      rotation: [0, 0, range(0.15, 0.3, -Math.PI / 2, Math.PI / 2, newAngle)],
+      rotation: [0, 0, range(0.08, 0.25, -Math.PI / 2, Math.PI / 2, newAngle)],
       config: { mass: 1, tension: 100, friction: 25 },
     }));
 
     setBgShapeSprings.start((i) => ({
       position: [
-        pickRandomDecimalFromInterval(-3, 3),
-        pickRandomDecimalFromInterval(-3, 3),
+        pickRandomDecimalFromInterval(-3, 3, 1, Math.random),
+        pickRandomDecimalFromInterval(-3, 3, 1, Math.random),
         -i,
       ],
       scale: [
-        pickRandomDecimalFromInterval(0.75, 1.25),
-        pickRandomDecimalFromInterval(0.75, 1.25),
+        pickRandomDecimalFromInterval(0.75, 1.25, 2, Math.random),
+        pickRandomDecimalFromInterval(0.75, 1.25, 2, Math.random),
         1,
       ],
       delay: i * 20,
@@ -278,11 +308,19 @@ const Scene = ({ canvasRef }: { canvasRef: RefObject<HTMLCanvasElement> }) => {
           ))}
         </group>
 
-        <DashedCircle
-          scale={angle}
-          rotation={dashedCircleSprings.rotation}
-          lastRotation={lastDashedCircleRotation}
-        />
+        {dashedCircles.map((o, i) => (
+          <DashedCircle
+            {...o}
+            key={i}
+            scale={angle}
+            rotation={dashedCircleSprings.rotation}
+            lastRotation={lastSpotlightAngle}
+            currentRotation={currentSpotlightAngle}
+            reversedRotation={reversedRotation}
+            outputScale={i === 0 ? 1 : 0.95}
+            innerCircle={i === 1}
+          />
+        ))}
       </group>
 
       <EffectComposer>
@@ -298,7 +336,7 @@ const Scene = ({ canvasRef }: { canvasRef: RefObject<HTMLCanvasElement> }) => {
           luminanceSmoothing={0}
           intensity={0.5}
         />
-        <Noise opacity={0.05} />
+        <Noise opacity={noiseOpacity} />
       </EffectComposer>
     </>
   );
