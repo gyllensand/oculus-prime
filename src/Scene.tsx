@@ -1,15 +1,8 @@
-import { OrbitControls, useHelper } from "@react-three/drei";
+import { OrbitControls } from "@react-three/drei";
 import { useThree } from "@react-three/fiber";
 import { a, useSpring, useSprings } from "@react-spring/three";
-import { RefObject, useCallback, useEffect, useMemo, useRef } from "react";
-import {
-  AdditiveBlending,
-  DoubleSide,
-  PointLightHelper,
-  SpotLight,
-  SpotLightHelper,
-  Vector3,
-} from "three";
+import { RefObject, useCallback, useEffect, useRef } from "react";
+import { AdditiveBlending, DoubleSide, SpotLight, Vector3 } from "three";
 import {
   getSizeByAspect,
   hexToRgb,
@@ -30,7 +23,7 @@ const bgColor = pickRandom(BG_COLORS);
 const spotlightAngle = pickRandomDecimalFromInterval(0.08, 0.2, 2);
 const spotlightCorner1Y = pickRandomDecimalFromInterval(-4, 4);
 const spotlightCorner2Y = pickRandomDecimalFromInterval(-4, 4);
-const bgShapeCount = pickRandomIntFromInterval(3, 5);
+const bgShapeCount = pickRandomIntFromInterval(3, 6);
 
 const reversedRotation = pickRandomBoolean();
 const noiseOpacity = pickRandomDecimalFromInterval(0.05, 0.1);
@@ -103,6 +96,24 @@ const dashedCircles = new Array(dashedCircleCount).fill(null).map(() => {
   };
 });
 
+/********* */
+
+const bgShapes = new Array(bgShapeCount).fill(null).map((o, i) => {
+  return {
+    opacity: pickRandomDecimalFromInterval(0.1, 0.5),
+    width: pickRandomDecimalFromInterval(4, 8),
+    height: pickRandomDecimalFromInterval(4, 8),
+    color: pickRandom(COLORS),
+    shape: pickRandom([0, 1, 2, 3, 4]),
+    rotation: pickRandomDecimalFromInterval(-Math.PI, Math.PI),
+    position: new Vector3(
+      pickRandomDecimalFromInterval(-3, 3),
+      pickRandomDecimalFromInterval(-3, 3),
+      -i
+    ),
+  };
+});
+
 const Scene = ({ canvasRef }: { canvasRef: RefObject<HTMLCanvasElement> }) => {
   const { aspect } = useThree((state) => ({
     aspect: state.viewport.aspect,
@@ -114,27 +125,9 @@ const Scene = ({ canvasRef }: { canvasRef: RefObject<HTMLCanvasElement> }) => {
   const currentSpotlightAngle = useRef(spotlightAngle);
   const toneInitialized = useRef(false);
 
-  const bgShapes = useMemo(
-    () =>
-      new Array(bgShapeCount).fill(null).map((o, i) => {
-        return {
-          opacity: pickRandomDecimalFromInterval(0.1, 0.5),
-          width: pickRandomDecimalFromInterval(4, 8),
-          height: pickRandomDecimalFromInterval(4, 8),
-          color: pickRandom(COLORS),
-          shape: pickRandom([0, 1, 2, 3]),
-          position: new Vector3(
-            pickRandomDecimalFromInterval(-3, 3),
-            pickRandomDecimalFromInterval(-3, 3),
-            -i
-          ),
-        };
-      }),
-    []
-  );
-
   const [frameSprings, setFrameSprings] = useSprings(frameLineCount, (i) => ({
     scale: 1,
+    gap: frameGap,
   }));
 
   const [bgShapeSprings, setBgShapeSprings] = useSprings(bgShapeCount, (i) => ({
@@ -158,9 +151,16 @@ const Scene = ({ canvasRef }: { canvasRef: RefObject<HTMLCanvasElement> }) => {
   const onPointerDown = useCallback(() => {
     const newRotation = pickRandomDecimalFromInterval(15, 100, 1, Math.random);
     const newScale = pickRandomDecimalFromInterval(0.5, 1.5, 1, Math.random);
+    const newGap = pickRandomDecimalFromInterval(
+      frameGap - 0.001,
+      frameGap + 0.001,
+      3,
+      Math.random
+    );
 
     setFrameSprings.start((i) => ({
       rotation: [0, 0, i / newRotation],
+      gap: newGap,
       scale: pickRandomDecimalFromInterval(
         newScale - 0.1,
         newScale + 0.1,
@@ -170,7 +170,7 @@ const Scene = ({ canvasRef }: { canvasRef: RefObject<HTMLCanvasElement> }) => {
       config: { mass: 1, tension: 100, friction: 25 },
     }));
 
-    const newAngle = pickRandomDecimalFromInterval(0.08, 0.25, 2, Math.random);
+    const newAngle = pickRandomDecimalFromInterval(0.08, 0.2, 2, Math.random);
     lastSpotlightAngle.current = angle.get();
     currentSpotlightAngle.current = newAngle;
 
@@ -181,7 +181,7 @@ const Scene = ({ canvasRef }: { canvasRef: RefObject<HTMLCanvasElement> }) => {
     }));
 
     setDashedCircleSpring.start(() => ({
-      rotation: [0, 0, range(0.08, 0.25, -Math.PI / 2, Math.PI / 2, newAngle)],
+      rotation: [0, 0, range(0.08, 0.2, -Math.PI / 2, Math.PI / 2, newAngle)],
       config: { mass: 1, tension: 100, friction: 25 },
     }));
 
@@ -261,7 +261,7 @@ const Scene = ({ canvasRef }: { canvasRef: RefObject<HTMLCanvasElement> }) => {
               index={i}
               radius={angle}
               data={o}
-              gap={frameGap}
+              gap={frameSprings[i].gap}
               height={frameHeight}
               scale={frameSprings[i].scale}
             />
@@ -276,7 +276,9 @@ const Scene = ({ canvasRef }: { canvasRef: RefObject<HTMLCanvasElement> }) => {
               receiveShadow
               position={bgShapeSprings[i].position as any}
               scale={bgShapeSprings[i].scale as any}
-              rotation={o.shape !== 0 ? [Math.PI / 2, 0, 0] : [0, 0, 0]}
+              rotation={
+                o.shape !== 0 ? [Math.PI / 2, o.rotation, 0] : [0, 0, 0]
+              }
             >
               {o.shape === 0 ? (
                 <boxBufferGeometry args={[o.width, o.height, 0.1]} />
@@ -287,6 +289,19 @@ const Scene = ({ canvasRef }: { canvasRef: RefObject<HTMLCanvasElement> }) => {
               ) : o.shape === 2 ? (
                 <cylinderBufferGeometry
                   args={[o.width / 2.5, o.width / 2.5, 0.1, 3, 3]}
+                />
+              ) : o.shape === 3 ? (
+                <cylinderBufferGeometry
+                  args={[
+                    o.width / 2.5,
+                    o.width / 2.5,
+                    0.1,
+                    128,
+                    128,
+                    false,
+                    0,
+                    Math.PI,
+                  ]}
                 />
               ) : (
                 <cylinderBufferGeometry

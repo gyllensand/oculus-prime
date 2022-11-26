@@ -40,7 +40,7 @@ const Frame = ({
   radius: SpringValue<number>;
   scale: SpringValue<number>;
   height: number;
-  gap: number;
+  gap: SpringValue<number>;
   data: {
     width: number;
     wireframe: boolean;
@@ -48,10 +48,9 @@ const Frame = ({
   };
 }) => {
   const groupRef = useRef<Group>();
-  // const width = Math.random();
 
   useFrame(() => {
-    const angle = index * Math.PI * gap;
+    const angle = index * Math.PI * gap.get();
 
     groupRef
       .current!.position.set(Math.cos(angle), Math.sin(angle), 0)

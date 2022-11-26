@@ -3,6 +3,7 @@ import { Canvas } from "@react-three/fiber";
 import Scene from "./Scene";
 import { Sampler } from "tone";
 import { a, useSpring } from "react-spring";
+import { Stats } from "@react-three/drei";
 
 console.log(
   "%c * Computer Emotions * ",
@@ -25,6 +26,7 @@ const App = () => {
       shadows
     >
       <Suspense fallback={null}>
+        <Stats />
         <Scene canvasRef={canvasRef} />
       </Suspense>
     </Canvas>

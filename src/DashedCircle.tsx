@@ -123,8 +123,8 @@ const DashedCircle = ({
         onUpdate={(line: Line) => line.computeLineDistances()}
         geometry={geometry}
         scale={scale.to({
-          range: [0.08, 0.25],
-          output: [1.55, 5],
+          range: [0.08, 0.2],
+          output: [1.55, 4],
         })}
       >
         <lineDashedMaterial
