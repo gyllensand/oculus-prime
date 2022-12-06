@@ -10,7 +10,6 @@ import {
   pickRandomBoolean,
   pickRandomDecimalFromInterval,
   pickRandomIntFromInterval,
-  pickRandomSphericalPos,
   range,
 } from "./utils";
 import { COLORS, BG_COLORS, LIGHT_BG_COLORS } from "./constants";
@@ -23,7 +22,7 @@ const bgColor = pickRandom(BG_COLORS);
 const spotlightAngle = pickRandomDecimalFromInterval(0.08, 0.2, 2);
 const spotlightCorner1Y = pickRandomDecimalFromInterval(-4, 4);
 const spotlightCorner2Y = pickRandomDecimalFromInterval(-4, 4);
-const bgShapeCount = pickRandomIntFromInterval(3, 6);
+const bgShapeCount = pickRandomIntFromInterval(5, 10);
 
 const reversedRotation = pickRandomBoolean();
 const noiseOpacity = pickRandomDecimalFromInterval(0.05, 0.1);
@@ -32,7 +31,6 @@ const noiseOpacity = pickRandomDecimalFromInterval(0.05, 0.1);
 
 const frameLineCount = pickRandomIntFromInterval(20, 200);
 const frameWidth = pickRandomDecimalFromInterval(0.1, 2, 3);
-const frameSpherePos = pickRandomSphericalPos();
 const frameWireframeOptions = pickRandom([0, 1, 2]);
 const frameWireframe =
   frameWireframeOptions === 0
@@ -50,6 +48,7 @@ const frameGap =
   frameLineCount > 100
     ? pickRandom([
         pickRandomDecimalFromInterval(0.005, 0.01, 3),
+        pickRandomDecimalFromInterval(0.01, 0.03, 3),
         pickRandomDecimalFromInterval(0.01, 0.03, 3),
       ])
     : pickRandomDecimalFromInterval(0.01, 0.03, 3);
@@ -99,12 +98,26 @@ const dashedCircles = new Array(dashedCircleCount).fill(null).map(() => {
 /********* */
 
 const bgShapes = new Array(bgShapeCount).fill(null).map((o, i) => {
+  const shape = pickRandom([0, 0, 1, 2, 3, 4]);
+  const wireframe = shape === 0 || shape === 1 ? pickRandomBoolean() : false;
+  const planeSegments = pickRandom([
+    [1, 64],
+    [64, 1],
+    [64, 64],
+  ]);
+  const roughness = pickRandomDecimalFromInterval(0.5, 1, 2);
+  const metalness = pickRandomDecimalFromInterval(0, 2, 2);
+
   return {
     opacity: pickRandomDecimalFromInterval(0.1, 0.5),
     width: pickRandomDecimalFromInterval(4, 8),
     height: pickRandomDecimalFromInterval(4, 8),
     color: pickRandom(COLORS),
-    shape: pickRandom([0, 1, 2, 3, 4]),
+    shape,
+    wireframe,
+    planeSegments,
+    roughness,
+    metalness,
     rotation: pickRandomDecimalFromInterval(-Math.PI, Math.PI),
     position: new Vector3(
       pickRandomDecimalFromInterval(-3, 3),
@@ -137,6 +150,7 @@ const Scene = ({ canvasRef }: { canvasRef: RefObject<HTMLCanvasElement> }) => {
       bgShapes[i].position.z,
     ],
     scale: [1, 1, 1],
+    rotation: [0, 0, bgShapes[i].rotation],
   }));
 
   const [{ angle, intensity }, setSpotlightSpring] = useSpring(() => ({
@@ -176,7 +190,7 @@ const Scene = ({ canvasRef }: { canvasRef: RefObject<HTMLCanvasElement> }) => {
 
     setSpotlightSpring.start(() => ({
       angle: newAngle,
-      intensity: pickRandomDecimalFromInterval(0.5, 1, 1, Math.random),
+      intensity: pickRandomDecimalFromInterval(1, 1.5, 1, Math.random),
       config: { mass: 1, tension: 100, friction: 25 },
     }));
 
@@ -195,6 +209,16 @@ const Scene = ({ canvasRef }: { canvasRef: RefObject<HTMLCanvasElement> }) => {
         pickRandomDecimalFromInterval(0.75, 1.25, 2, Math.random),
         pickRandomDecimalFromInterval(0.75, 1.25, 2, Math.random),
         1,
+      ],
+      rotation: [
+        0,
+        0,
+        pickRandomDecimalFromInterval(
+          bgShapes[i].rotation - Math.PI / 2,
+          bgShapes[i].rotation + Math.PI / 2,
+          2,
+          Math.random
+        ),
       ],
       delay: i * 20,
       config: { mass: 1, tension: 100, friction: 25 },
@@ -257,7 +281,6 @@ const Scene = ({ canvasRef }: { canvasRef: RefObject<HTMLCanvasElement> }) => {
           {frameLines.map((o, i) => (
             <Frame
               key={i}
-              pos={frameSpherePos}
               index={i}
               radius={angle}
               data={o}
@@ -272,44 +295,30 @@ const Scene = ({ canvasRef }: { canvasRef: RefObject<HTMLCanvasElement> }) => {
           {bgShapes.map((o, i) => (
             <a.mesh
               key={i}
-              castShadow
-              receiveShadow
               position={bgShapeSprings[i].position as any}
               scale={bgShapeSprings[i].scale as any}
-              rotation={
-                o.shape !== 0 ? [Math.PI / 2, o.rotation, 0] : [0, 0, 0]
-              }
+              rotation={bgShapeSprings[i].rotation as any}
             >
               {o.shape === 0 ? (
-                <boxBufferGeometry args={[o.width, o.height, 0.1]} />
-              ) : o.shape === 1 ? (
-                <cylinderBufferGeometry
-                  args={[o.width / 2.5, o.width / 2.5, 0.1, 128, 128]}
-                />
-              ) : o.shape === 2 ? (
-                <cylinderBufferGeometry
-                  args={[o.width / 2.5, o.width / 2.5, 0.1, 3, 3]}
-                />
-              ) : o.shape === 3 ? (
-                <cylinderBufferGeometry
+                <planeBufferGeometry
                   args={[
-                    o.width / 2.5,
-                    o.width / 2.5,
-                    0.1,
-                    128,
-                    128,
-                    false,
-                    0,
-                    Math.PI,
+                    o.width,
+                    o.height,
+                    o.planeSegments[0],
+                    o.planeSegments[1],
                   ]}
                 />
+              ) : o.shape === 1 ? (
+                <circleBufferGeometry args={[o.width / 2.5, 128]} />
+              ) : o.shape === 2 ? (
+                <circleBufferGeometry args={[o.width / 2.5, 3]} />
+              ) : o.shape === 3 ? (
+                <circleBufferGeometry args={[o.width / 2.5, 128, 0, Math.PI]} />
               ) : (
-                <cylinderBufferGeometry
-                  args={[o.width / 2.5, o.width / 2.5, 0.1, 6, 6]}
-                />
+                <circleBufferGeometry args={[o.width / 2.5, 6]} />
               )}
 
-              <meshPhongMaterial
+              <meshStandardMaterial
                 color={o.color}
                 side={DoubleSide}
                 transparent
@@ -317,7 +326,9 @@ const Scene = ({ canvasRef }: { canvasRef: RefObject<HTMLCanvasElement> }) => {
                 opacity={o.opacity}
                 toneMapped={false}
                 blending={AdditiveBlending}
-                shininess={2}
+                roughness={o.roughness}
+                metalness={o.metalness}
+                wireframe={o.wireframe}
               />
             </a.mesh>
           ))}

@@ -1,33 +1,9 @@
 import { useFrame } from "@react-three/fiber";
 import { a, SpringValue } from "@react-spring/three";
-import { MutableRefObject, useEffect, useMemo, useRef } from "react";
-import {
-  AdditiveBlending,
-  BufferGeometry,
-  Float32BufferAttribute,
-  Group,
-  Line,
-  Vector3,
-} from "three";
-import {
-  hexToRgb,
-  pickRandom,
-  pickRandomDecimalFromInterval,
-  pickRandomSphericalPos,
-} from "./utils";
-import { LIGHT_BG_COLORS } from "./constants";
-
-const dashScale = pickRandom([
-  pickRandomDecimalFromInterval(0.1, 0.5),
-  pickRandomDecimalFromInterval(1, 4),
-]);
-const dashSize =
-  dashScale <= 0.3 ? pickRandomDecimalFromInterval(0.2, 0.5) : 0.1;
-const color = pickRandom(LIGHT_BG_COLORS);
-const rgb = hexToRgb(color);
+import { useRef } from "react";
+import { AdditiveBlending, Group } from "three";
 
 const Frame = ({
-  pos,
   index,
   radius,
   data,
@@ -35,7 +11,6 @@ const Frame = ({
   gap,
   scale,
 }: {
-  pos: Vector3;
   index: number;
   radius: SpringValue<number>;
   scale: SpringValue<number>;
