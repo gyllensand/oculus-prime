@@ -1,7 +1,14 @@
 import { OrbitControls } from "@react-three/drei";
 import { useThree } from "@react-three/fiber";
 import { a, useSpring, useSprings } from "@react-spring/three";
-import { RefObject, useCallback, useEffect, useRef } from "react";
+import {
+  RefObject,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { AdditiveBlending, DoubleSide, SpotLight, Vector3 } from "three";
 import {
   getSizeByAspect,
@@ -17,6 +24,8 @@ import DashedCircle from "./DashedCircle";
 import { Bloom, EffectComposer, Noise } from "@react-three/postprocessing";
 import { KernelSize } from "postprocessing";
 import Frame from "./Frame";
+import { start } from "tone";
+import { LONGS, SHORTS, DOUBLES, Sample } from "./App";
 
 const bgColor = pickRandom(BG_COLORS);
 const spotlightAngle = pickRandomDecimalFromInterval(0.08, 0.2, 2);
@@ -138,6 +147,40 @@ const Scene = ({ canvasRef }: { canvasRef: RefObject<HTMLCanvasElement> }) => {
   const currentSpotlightAngle = useRef(spotlightAngle);
   const toneInitialized = useRef(false);
 
+  const [lastPlayedLong, setLastPlayedLong] = useState<Sample>();
+  const [lastPlayedShort, setLastPlayedShort] = useState<Sample>();
+  const [lastPlayedDouble, setLastPlayedDouble] = useState<Sample>();
+  const availableLongs = useMemo(
+    () => LONGS.filter(({ index }) => index !== lastPlayedLong?.index),
+    [lastPlayedLong]
+  );
+  const availableShorts = useMemo(
+    () => SHORTS.filter(({ index }) => index !== lastPlayedShort?.index),
+    [lastPlayedShort]
+  );
+  const availableDoubles = useMemo(
+    () => DOUBLES.filter(({ index }) => index !== lastPlayedDouble?.index),
+    [lastPlayedDouble]
+  );
+
+  useEffect(() => {
+    if (lastPlayedLong && lastPlayedLong.sampler.loaded) {
+      lastPlayedLong.sampler.triggerAttack("C#-1");
+    }
+  }, [lastPlayedLong]);
+
+  useEffect(() => {
+    if (lastPlayedShort && lastPlayedShort.sampler.loaded) {
+      lastPlayedShort.sampler.triggerAttack("C#-1");
+    }
+  }, [lastPlayedShort]);
+
+  useEffect(() => {
+    if (lastPlayedDouble && lastPlayedDouble.sampler.loaded) {
+      lastPlayedDouble.sampler.triggerAttack("C#-1");
+    }
+  }, [lastPlayedDouble]);
+
   const [frameSprings, setFrameSprings] = useSprings(frameLineCount, (i) => ({
     scale: 1,
     gap: frameGap,
@@ -162,7 +205,19 @@ const Scene = ({ canvasRef }: { canvasRef: RefObject<HTMLCanvasElement> }) => {
     rotation: [0, 0, 0],
   }));
 
-  const onPointerDown = useCallback(() => {
+  useEffect(() => {
+    LONGS.forEach((chord) => {
+      chord.sampler.toDestination();
+    });
+    SHORTS.forEach((chord) => {
+      chord.sampler.toDestination();
+    });
+    DOUBLES.forEach((chord) => {
+      chord.sampler.toDestination();
+    });
+  }, []);
+
+  const onPointerDown = useCallback(async () => {
     const newRotation = pickRandomDecimalFromInterval(15, 100, 1, Math.random);
     const newScale = pickRandomDecimalFromInterval(0.5, 1.5, 1, Math.random);
     const newGap = pickRandomDecimalFromInterval(
@@ -223,12 +278,37 @@ const Scene = ({ canvasRef }: { canvasRef: RefObject<HTMLCanvasElement> }) => {
       delay: i * 20,
       config: { mass: 1, tension: 100, friction: 25 },
     }));
+
+    if (!toneInitialized.current) {
+      await start();
+      toneInitialized.current = true;
+    }
+
+    const angleDiff = Math.abs(
+      lastSpotlightAngle.current - currentSpotlightAngle.current
+    );
+
+    if (angleDiff > 5) {
+      if (Math.random() > 0.5) {
+        const currentDouble = pickRandom(availableDoubles);
+        setLastPlayedDouble(currentDouble);
+      } else {
+        const currentLong = pickRandom(availableLongs);
+        setLastPlayedLong(currentLong);
+      }
+    } else {
+      const currentShort = pickRandom(availableShorts);
+      setLastPlayedShort(currentShort);
+    }
   }, [
     setBgShapeSprings,
     setSpotlightSpring,
     setDashedCircleSpring,
     setFrameSprings,
     angle,
+    availableLongs,
+    availableShorts,
+    availableDoubles,
   ]);
 
   const onPointerUp = useCallback(() => {}, []);

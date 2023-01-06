@@ -2,7 +2,6 @@ import { Suspense, useRef } from "react";
 import { Canvas } from "@react-three/fiber";
 import Scene from "./Scene";
 import { Sampler } from "tone";
-import { a, useSpring } from "react-spring";
 import { Stats } from "@react-three/drei";
 
 console.log(
@@ -15,6 +14,157 @@ console.log(
   "font-size: 12px; background-color: #000000;"
 );
 
+const baseUrl = `${process.env.PUBLIC_URL}/audio/`;
+
+export interface Sample {
+  index: number;
+  sampler: Sampler;
+}
+
+export const LONGS: Sample[] = [
+  {
+    index: 0,
+    sampler: new Sampler({
+      urls: {
+        1: `1.mp3`,
+      },
+      baseUrl,
+    }),
+  },
+  {
+    index: 1,
+    sampler: new Sampler({
+      urls: {
+        1: `2.mp3`,
+      },
+      baseUrl,
+    }),
+  },
+  {
+    index: 2,
+    sampler: new Sampler({
+      urls: {
+        1: `3.mp3`,
+      },
+      baseUrl,
+    }),
+  },
+  {
+    index: 3,
+    sampler: new Sampler({
+      urls: {
+        1: `4.mp3`,
+      },
+      baseUrl,
+    }),
+  },
+  {
+    index: 4,
+    sampler: new Sampler({
+      urls: {
+        1: `5.mp3`,
+      },
+      baseUrl,
+    }),
+  },
+];
+
+export const SHORTS: Sample[] = [
+  {
+    index: 0,
+    sampler: new Sampler({
+      urls: {
+        1: `1-short.mp3`,
+      },
+      baseUrl,
+    }),
+  },
+  {
+    index: 1,
+    sampler: new Sampler({
+      urls: {
+        1: `2-short.mp3`,
+      },
+      baseUrl,
+    }),
+  },
+  {
+    index: 2,
+    sampler: new Sampler({
+      urls: {
+        1: `3-short.mp3`,
+      },
+      baseUrl,
+    }),
+  },
+  {
+    index: 3,
+    sampler: new Sampler({
+      urls: {
+        1: `4-short.mp3`,
+      },
+      baseUrl,
+    }),
+  },
+  {
+    index: 4,
+    sampler: new Sampler({
+      urls: {
+        1: `5-short.mp3`,
+      },
+      baseUrl,
+    }),
+  },
+  {
+    index: 5,
+    sampler: new Sampler({
+      urls: {
+        1: `6-short.mp3`,
+      },
+      baseUrl,
+    }),
+  },
+  {
+    index: 6,
+    sampler: new Sampler({
+      urls: {
+        1: `7-short.mp3`,
+      },
+      baseUrl,
+    }),
+  },
+];
+
+export const DOUBLES: Sample[] = [
+  {
+    index: 0,
+    sampler: new Sampler({
+      urls: {
+        1: `1-double.mp3`,
+      },
+      baseUrl,
+    }),
+  },
+  {
+    index: 1,
+    sampler: new Sampler({
+      urls: {
+        1: `2-double.mp3`,
+      },
+      baseUrl,
+    }),
+  },
+  {
+    index: 2,
+    sampler: new Sampler({
+      urls: {
+        1: `3-double.mp3`,
+      },
+      baseUrl,
+    }),
+  },
+];
+
 const App = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -26,7 +176,7 @@ const App = () => {
       shadows
     >
       <Suspense fallback={null}>
-        <Stats />
+        {/* <Stats /> */}
         <Scene canvasRef={canvasRef} />
       </Suspense>
     </Canvas>
