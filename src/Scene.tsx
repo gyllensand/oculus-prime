@@ -10,6 +10,7 @@ import {
   useState,
 } from "react";
 import { AdditiveBlending, DoubleSide, SpotLight, Vector3 } from "three";
+import { isMobile } from "react-device-detect";
 import {
   getSizeByAspect,
   hexToRgb,
@@ -144,6 +145,14 @@ const bgShapes = new Array(bgShapeCount).fill(null).map((o, i) => {
     ),
   };
 });
+
+// @ts-ignore
+window.$fxhashFeatures = {
+  instrument,
+  pitch,
+  bgColor,
+  bgShapeCount,
+};
 
 const Scene = ({ canvasRef }: { canvasRef: RefObject<HTMLCanvasElement> }) => {
   const { aspect } = useThree((state) => ({
@@ -350,10 +359,10 @@ const Scene = ({ canvasRef }: { canvasRef: RefObject<HTMLCanvasElement> }) => {
       }
     } else {
       LONG_PLUCKS.filter(({ sampler }) =>
-        sampler.triggerRelease(pitch, "+0.5")
+        sampler.triggerRelease(pitch, "+0.1")
       );
       SHORT_PLUCKS.filter(({ sampler }) =>
-        sampler.triggerRelease(pitch, "+0.5")
+        sampler.triggerRelease(pitch, "+0.1")
       );
 
       if (Math.random() > 0.5) {
@@ -498,21 +507,27 @@ const Scene = ({ canvasRef }: { canvasRef: RefObject<HTMLCanvasElement> }) => {
         ))}
       </group>
 
-      <EffectComposer>
-        <Bloom
-          kernelSize={3}
-          luminanceThreshold={0}
-          luminanceSmoothing={0.4}
-          intensity={0.6}
-        />
-        <Bloom
-          kernelSize={KernelSize.HUGE}
-          luminanceThreshold={0}
-          luminanceSmoothing={0}
-          intensity={0.5}
-        />
-        <Noise opacity={noiseOpacity} />
-      </EffectComposer>
+      {!isMobile ? (
+        <EffectComposer>
+          <Bloom
+            kernelSize={3}
+            luminanceThreshold={0}
+            luminanceSmoothing={0.4}
+            intensity={0.6}
+          />
+          <Bloom
+            kernelSize={KernelSize.HUGE}
+            luminanceThreshold={0}
+            luminanceSmoothing={0}
+            intensity={0.5}
+          />
+          <Noise opacity={noiseOpacity} />
+        </EffectComposer>
+      ) : (
+        <EffectComposer>
+          <Noise opacity={noiseOpacity} />
+        </EffectComposer>
+      )}
     </>
   );
 };
