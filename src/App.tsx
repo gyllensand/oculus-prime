@@ -2,7 +2,6 @@ import { Suspense, useRef } from "react";
 import { Canvas } from "@react-three/fiber";
 import Scene from "./Scene";
 import { Sampler } from "tone";
-import { Stats } from "@react-three/drei";
 
 console.log(
   "%c * Computer Emotions * ",
@@ -165,6 +164,120 @@ export const DOUBLES: Sample[] = [
   },
 ];
 
+export const LONG_PLUCKS: Sample[] = [
+  {
+    index: 0,
+    sampler: new Sampler({
+      urls: {
+        1: `long-pluck-a2.mp3`,
+      },
+      baseUrl,
+    }),
+  },
+  {
+    index: 1,
+    sampler: new Sampler({
+      urls: {
+        1: `long-pluck-cs3.mp3`,
+      },
+      baseUrl,
+    }),
+  },
+  {
+    index: 2,
+    sampler: new Sampler({
+      urls: {
+        1: `long-pluck-d3.mp3`,
+      },
+      baseUrl,
+    }),
+  },
+  {
+    index: 3,
+    sampler: new Sampler({
+      urls: {
+        1: `long-pluck-e3.mp3`,
+      },
+      baseUrl,
+    }),
+  },
+  {
+    index: 4,
+    sampler: new Sampler({
+      urls: {
+        1: `long-pluck-e32.mp3`,
+      },
+      baseUrl,
+    }),
+  },
+  {
+    index: 5,
+    sampler: new Sampler({
+      urls: {
+        1: `long-pluck-fs3.mp3`,
+      },
+      baseUrl,
+    }),
+  },
+];
+
+export const SHORT_PLUCKS: Sample[] = [
+  {
+    index: 0,
+    sampler: new Sampler({
+      urls: {
+        1: `short-pluck-a2.mp3`,
+      },
+      baseUrl,
+    }),
+  },
+  {
+    index: 1,
+    sampler: new Sampler({
+      urls: {
+        1: `short-pluck-cs3.mp3`,
+      },
+      baseUrl,
+    }),
+  },
+  {
+    index: 2,
+    sampler: new Sampler({
+      urls: {
+        1: `short-pluck-d3.mp3`,
+      },
+      baseUrl,
+    }),
+  },
+  {
+    index: 3,
+    sampler: new Sampler({
+      urls: {
+        1: `short-pluck-e3.mp3`,
+      },
+      baseUrl,
+    }),
+  },
+  {
+    index: 4,
+    sampler: new Sampler({
+      urls: {
+        1: `short-pluck-e32.mp3`,
+      },
+      baseUrl,
+    }),
+  },
+  {
+    index: 5,
+    sampler: new Sampler({
+      urls: {
+        1: `short-pluck-fs3.mp3`,
+      },
+      baseUrl,
+    }),
+  },
+];
+
 const App = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -176,7 +289,6 @@ const App = () => {
       shadows
     >
       <Suspense fallback={null}>
-        {/* <Stats /> */}
         <Scene canvasRef={canvasRef} />
       </Suspense>
     </Canvas>

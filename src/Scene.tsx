@@ -25,8 +25,17 @@ import { Bloom, EffectComposer, Noise } from "@react-three/postprocessing";
 import { KernelSize } from "postprocessing";
 import Frame from "./Frame";
 import { start } from "tone";
-import { LONGS, SHORTS, DOUBLES, Sample } from "./App";
+import {
+  LONGS,
+  SHORTS,
+  DOUBLES,
+  Sample,
+  LONG_PLUCKS,
+  SHORT_PLUCKS,
+} from "./App";
 
+const instrument = pickRandom([0, 1, 1]);
+const pitch = pickRandom(["C#-1", "D-1"]);
 const bgColor = pickRandom(BG_COLORS);
 const spotlightAngle = pickRandomDecimalFromInterval(0.08, 0.2, 2);
 const spotlightCorner1Y = pickRandomDecimalFromInterval(-4, 4);
@@ -150,6 +159,9 @@ const Scene = ({ canvasRef }: { canvasRef: RefObject<HTMLCanvasElement> }) => {
   const [lastPlayedLong, setLastPlayedLong] = useState<Sample>();
   const [lastPlayedShort, setLastPlayedShort] = useState<Sample>();
   const [lastPlayedDouble, setLastPlayedDouble] = useState<Sample>();
+  const [lastPlayedLongPlucks, setLastPlayedLongPlucks] = useState<Sample>();
+  const [lastPlayedShortPlucks, setLastPlayedShortPlucks] = useState<Sample>();
+  const [lastPlayedNoteIndex, setLastPlayedNoteIndex] = useState<number>();
   const availableLongs = useMemo(
     () => LONGS.filter(({ index }) => index !== lastPlayedLong?.index),
     [lastPlayedLong]
@@ -161,6 +173,18 @@ const Scene = ({ canvasRef }: { canvasRef: RefObject<HTMLCanvasElement> }) => {
   const availableDoubles = useMemo(
     () => DOUBLES.filter(({ index }) => index !== lastPlayedDouble?.index),
     [lastPlayedDouble]
+  );
+  const availableLongPlucks = useMemo(
+    () =>
+      LONG_PLUCKS.filter(({ index }) => index !== lastPlayedLongPlucks?.index),
+    [lastPlayedLongPlucks]
+  );
+  const availableShortPlucks = useMemo(
+    () =>
+      SHORT_PLUCKS.filter(
+        ({ index }) => index !== lastPlayedShortPlucks?.index
+      ),
+    [lastPlayedShortPlucks]
   );
 
   useEffect(() => {
@@ -180,6 +204,20 @@ const Scene = ({ canvasRef }: { canvasRef: RefObject<HTMLCanvasElement> }) => {
       lastPlayedDouble.sampler.triggerAttack("C#-1");
     }
   }, [lastPlayedDouble]);
+
+  useEffect(() => {
+    if (lastPlayedLongPlucks && lastPlayedLongPlucks.sampler.loaded) {
+      lastPlayedLongPlucks.sampler.triggerAttack(pitch);
+      setLastPlayedNoteIndex(lastPlayedLongPlucks.index);
+    }
+  }, [lastPlayedLongPlucks]);
+
+  useEffect(() => {
+    if (lastPlayedShortPlucks && lastPlayedShortPlucks.sampler.loaded) {
+      lastPlayedShortPlucks.sampler.triggerAttack(pitch);
+      setLastPlayedNoteIndex(lastPlayedShortPlucks.index);
+    }
+  }, [lastPlayedShortPlucks]);
 
   const [frameSprings, setFrameSprings] = useSprings(frameLineCount, (i) => ({
     scale: 1,
@@ -207,12 +245,21 @@ const Scene = ({ canvasRef }: { canvasRef: RefObject<HTMLCanvasElement> }) => {
 
   useEffect(() => {
     LONGS.forEach((chord) => {
+      chord.sampler.volume.value = -5;
       chord.sampler.toDestination();
     });
     SHORTS.forEach((chord) => {
+      chord.sampler.volume.value = -5;
       chord.sampler.toDestination();
     });
     DOUBLES.forEach((chord) => {
+      chord.sampler.volume.value = -5;
+      chord.sampler.toDestination();
+    });
+    LONG_PLUCKS.forEach((chord) => {
+      chord.sampler.toDestination();
+    });
+    SHORT_PLUCKS.forEach((chord) => {
       chord.sampler.toDestination();
     });
   }, []);
@@ -284,21 +331,44 @@ const Scene = ({ canvasRef }: { canvasRef: RefObject<HTMLCanvasElement> }) => {
       toneInitialized.current = true;
     }
 
-    const angleDiff = Math.abs(
-      lastSpotlightAngle.current - currentSpotlightAngle.current
-    );
+    if (instrument === 0) {
+      const angleDiff = Math.abs(
+        lastSpotlightAngle.current - currentSpotlightAngle.current
+      );
 
-    if (angleDiff > 5) {
-      if (Math.random() > 0.5) {
-        const currentDouble = pickRandom(availableDoubles);
-        setLastPlayedDouble(currentDouble);
+      if (angleDiff > 5) {
+        if (Math.random() > 0.5) {
+          const currentDouble = pickRandom(availableDoubles, Math.random);
+          setLastPlayedDouble(currentDouble);
+        } else {
+          const currentLong = pickRandom(availableLongs, Math.random);
+          setLastPlayedLong(currentLong);
+        }
       } else {
-        const currentLong = pickRandom(availableLongs);
-        setLastPlayedLong(currentLong);
+        const currentShort = pickRandom(availableShorts, Math.random);
+        setLastPlayedShort(currentShort);
       }
     } else {
-      const currentShort = pickRandom(availableShorts);
-      setLastPlayedShort(currentShort);
+      LONG_PLUCKS.filter(({ sampler }) =>
+        sampler.triggerRelease(pitch, "+0.5")
+      );
+      SHORT_PLUCKS.filter(({ sampler }) =>
+        sampler.triggerRelease(pitch, "+0.5")
+      );
+
+      if (Math.random() > 0.5) {
+        const randPluck = availableLongPlucks.filter(
+          ({ index }) => index !== lastPlayedNoteIndex
+        );
+        const currentLongPluck = pickRandom(randPluck, Math.random);
+        setLastPlayedLongPlucks(currentLongPluck);
+      } else {
+        const randPluck = availableShortPlucks.filter(
+          ({ index }) => index !== lastPlayedNoteIndex
+        );
+        const currentShortPluck = pickRandom(randPluck, Math.random);
+        setLastPlayedShortPlucks(currentShortPluck);
+      }
     }
   }, [
     setBgShapeSprings,
@@ -309,9 +379,10 @@ const Scene = ({ canvasRef }: { canvasRef: RefObject<HTMLCanvasElement> }) => {
     availableLongs,
     availableShorts,
     availableDoubles,
+    availableLongPlucks,
+    availableShortPlucks,
+    lastPlayedNoteIndex,
   ]);
-
-  const onPointerUp = useCallback(() => {}, []);
 
   useEffect(() => {
     const ref = canvasRef?.current;
@@ -321,13 +392,11 @@ const Scene = ({ canvasRef }: { canvasRef: RefObject<HTMLCanvasElement> }) => {
     }
 
     ref.addEventListener("pointerdown", onPointerDown);
-    ref.addEventListener("pointerup", onPointerUp);
 
     return () => {
       ref.removeEventListener("pointerdown", onPointerDown);
-      ref.removeEventListener("pointerup", onPointerUp);
     };
-  }, [onPointerDown, onPointerUp, canvasRef]);
+  }, [onPointerDown, canvasRef]);
 
   useEffect(() => {
     spotlightCorner1Ref.current?.target.position.set(-3, spotlightCorner1Y, 0);
