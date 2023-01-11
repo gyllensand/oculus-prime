@@ -408,7 +408,7 @@ const Scene = ({ canvasRef }: { canvasRef: RefObject<HTMLCanvasElement> }) => {
   return (
     <>
       <color attach="background" args={[bgColor]} />
-      <OrbitControls enabled={true} />
+      <OrbitControls enabled={false} />
 
       <group
         scale={[
